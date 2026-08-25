@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <!--
+    起動時に常に管理者権限を要求する設定。
+    このツールはUSN Journal(MFT検索)やレジストリの一部書き込みに管理者権限を必須とするため、
+    非昇格状態で起動すると一部機能がサイレントに失敗する(0件表示になる)問題があった。
+    requireAdministrator により、どの起動方法でも自動的にUACダイアログが出るようにする。
+  -->
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+    <security>
+      <requestedPrivileges>
+        <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+</assembly>

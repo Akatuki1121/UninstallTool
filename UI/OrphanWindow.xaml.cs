@@ -1,0 +1,160 @@
+﻿using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Linq;
+using System.Windows;
+using Wpf.Ui.Controls;
+using MessageBox = System.Windows.MessageBox;
+using MessageBoxButton = System.Windows.MessageBoxButton;
+using MessageBoxImage = System.Windows.MessageBoxImage;
+using MessageBoxResult = System.Windows.MessageBoxResult;
+
+namespace UninstallTool.UI
+{
+    /// <summary>
+    /// 孤児候補スキャン結果を一覧表示し、チェックした項目のみ削除する画面。
+    /// 削除は既存のResidueRemover(MftFileカテゴリ)に委譲し、削除ロジックを一本化する。
+    /// </summary>
+    public partial class OrphanWindow : FluentWindow
+    {
+        private readonly OperationLog _log;
+        private readonly ResidueRemover _remover;
+        private readonly ObservableCollection<SelectableOrphanCandidate> _items;
+
+        public OrphanWindow(System.Collections.Generic.List<OrphanCandidate> candidates, OperationLog log)
+        {
+            InitializeComponent();
+            _log = log;
+            _remover = new ResidueRemover(_log);
+
+            _items = new ObservableCollection<SelectableOrphanCandidate>(
+                candidates.Select(c => new SelectableOrphanCandidate(c)));
+            OrphanListView.ItemsSource = _items;
+        }
+
+        /// <summary>
+        /// ドライラン切り替え時、色付きバッジで安全モードか実行モードかを明示する。
+        /// XAMLのIsChecked="True"によりInitializeComponent()実行中にCheckedが発火するため、
+        /// バッジ未初期化のnullガードが必須(MainWindowで実際に起きたクラッシュと同種の問題)。
+        /// </summary>
+        private void DryRunToggle_Changed(object sender, RoutedEventArgs e)
+        {
+            if (DryRunStatusBadge == null || DryRunStatusText == null)
+            {
+                return;
+            }
+
+            bool dryRun = DryRunToggle.IsChecked == true;
+
+            if (dryRun)
+            {
+                DryRunStatusBadge.Background = new System.Windows.Media.SolidColorBrush(
+                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#E6F4EA"));
+                DryRunStatusText.Text = "✓ 安全モード(実際には削除されません)";
+                DryRunStatusText.Foreground = new System.Windows.Media.SolidColorBrush(
+                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#1E7B34"));
+            }
+            else
+            {
+                DryRunStatusBadge.Background = new System.Windows.Media.SolidColorBrush(
+                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#FDECEA"));
+                DryRunStatusText.Text = "⚠ 実行モード(本当に削除されます)";
+                DryRunStatusText.Foreground = new System.Windows.Media.SolidColorBrush(
+                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#C62828"));
+            }
+        }
+
+        private void OpenFolderButton_Click(object sender, RoutedEventArgs e)
+        {
+            var selected = _items.Where(i => i.IsSelected).ToList();
+            if (selected.Count == 0)
+            {
+                MessageBox.Show("開く項目を選択してください。", "未選択", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            foreach (var item in selected)
+            {
+                try
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "explorer.exe",
+                        Arguments = $"\"{item.FullPath}\"",
+                        UseShellExecute = true,
+                    });
+                }
+                catch (System.Exception ex)
+                {
+                    _log.Warning("OrphanReview", "エクスプローラーで開けなかった", $"{item.FullPath}: {ex.Message}");
+                }
+            }
+        }
+
+        private void DeleteButton_Click(object sender, RoutedEventArgs e)
+        {
+            var selected = _items.Where(i => i.IsSelected).ToList();
+            if (selected.Count == 0)
+            {
+                MessageBox.Show("削除する項目を選択してください。", "未選択", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            bool dryRun = DryRunToggle.IsChecked == true;
+
+            if (!dryRun)
+            {
+                var confirm = MessageBox.Show(
+                    $"選択した{selected.Count}件を実際に削除します。\n\n" +
+                    "これらは「孤児候補」であり、誤検出の可能性があります。\n" +
+                    "本当に不要と確認したものだけ選択していることを確認してください。\n\n" +
+                    "よろしいですか？この操作は取り消せません。",
+                    "確認", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (confirm != MessageBoxResult.Yes) return;
+            }
+
+            int successCount = 0, failCount = 0, dryRunCount = 0;
+            var succeededItems = new System.Collections.Generic.List<SelectableOrphanCandidate>();
+
+            foreach (var item in selected)
+            {
+                var residueItem = new ResidueItem
+                {
+                    Category = ResidueCategory.MftFile,
+                    Location = item.FullPath,
+                    Detail = "孤児候補として検出",
+                };
+
+                var result = _remover.Remove(residueItem, dryRun);
+                switch (result)
+                {
+                    case RemovalResult.Success:
+                        successCount++;
+                        succeededItems.Add(item);
+                        break;
+                    case RemovalResult.DryRun:
+                        dryRunCount++;
+                        break;
+                    default:
+                        failCount++;
+                        break;
+                }
+            }
+
+            if (dryRun)
+            {
+                MessageBox.Show($"ドライラン完了: {dryRunCount}件(実際の削除は行っていません)",
+                    "結果", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show($"削除完了: 成功 {successCount}件 / 失敗 {failCount}件",
+                    "結果", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                foreach (var succeeded in succeededItems)
+                {
+                    _items.Remove(succeeded);
+                }
+            }
+        }
+    }
+}

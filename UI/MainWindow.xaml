@@ -1,0 +1,133 @@
+﻿<ui:FluentWindow x:Class="UninstallTool.UI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:UninstallTool.UI"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        mc:Ignorable="d"
+        Title="UninstallTool" Height="700" Width="1040" MinWidth="880" MinHeight="580"
+        ExtendsContentIntoTitleBar="True">
+    <Window.Resources>
+        <Style x:Key="SectionLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="Gray"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="150"/>
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="UninstallTool" ShowMaximize="True" ShowMinimize="True"/>
+
+        <Menu Grid.Row="1" Background="Transparent" Padding="8,2">
+            <MenuItem Header="ファイル(_F)">
+                <MenuItem Header="再読み込み" Click="RefreshButton_Click"/>
+                <Separator/>
+                <MenuItem Header="終了" Click="ExitMenuItem_Click"/>
+            </MenuItem>
+            <MenuItem Header="表示(_V)">
+                <MenuItem x:Name="ShowLogMenuItem" Header="操作ログを表示" IsCheckable="True" IsChecked="True"
+                          Click="ShowLogMenuItem_Click"/>
+            </MenuItem>
+            <MenuItem Header="ツール(_T)">
+                <MenuItem Header="孤児候補をスキャン(実験的)" Click="ScanOrphanButton_Click"/>
+                <MenuItem Header="このツール自身をアンインストール" Click="SelfUninstallButton_Click"/>
+            </MenuItem>
+            <MenuItem Header="ヘルプ(_H)">
+                <MenuItem Header="バージョン情報" Click="AboutMenuItem_Click"/>
+            </MenuItem>
+        </Menu>
+
+        <Border x:Name="ElevationWarningBorder" Grid.Row="2" Background="#FFF3CD" BorderBrush="#FFECB5"
+                BorderThickness="1" Padding="8" Margin="10,4,10,0" Visibility="Collapsed">
+            <TextBlock TextWrapping="Wrap" Foreground="#664D03"
+                       Text="⚠ 管理者権限で実行されていません。MFT高速検索(残存物の全体スキャン・孤児候補スキャン)は正しく動作せず、無言で0件になります。exeを右クリック→「管理者として実行」で起動し直してください。"/>
+        </Border>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="14,10,14,8">
+            <TextBlock Text="インストール済みアプリ" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+            <ui:Button x:Name="RefreshButton" Content="再読み込み" Icon="{ui:SymbolIcon ArrowSync24}"
+                       Margin="16,0,0,0" Click="RefreshButton_Click"/>
+            <TextBlock x:Name="CountText" Margin="16,0,0,0" VerticalAlignment="Center" Foreground="Gray"/>
+        </StackPanel>
+
+        <ui:Card Grid.Row="4" Margin="14,0,14,10" Padding="0">
+            <ListView x:Name="AppListView" SelectionMode="Extended" BorderThickness="0" Background="Transparent">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="" Width="32">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Image Source="{Binding Icon}" Width="18" Height="18"
+                                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="アプリ名" Width="300" DisplayMemberBinding="{Binding DisplayName}"/>
+                        <GridViewColumn Header="バージョン" Width="110" DisplayMemberBinding="{Binding DisplayVersion}"/>
+                        <GridViewColumn Header="発行元" Width="210" DisplayMemberBinding="{Binding Publisher}"/>
+                        <GridViewColumn Header="インストール場所" Width="220" DisplayMemberBinding="{Binding InstallLocation}"/>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </ui:Card>
+
+        <ui:Card Grid.Row="5" Margin="14,0,14,8" Padding="16,14">
+            <StackPanel>
+
+                <!-- 通常操作: アンインストール(単体が基本、複数選択時のみ一括ボタンが現れる) -->
+                <StackPanel Orientation="Horizontal">
+                    <ui:SymbolIcon Symbol="Delete24" FontSize="16" Margin="0,0,8,0" Foreground="#666"/>
+                    <ui:ToggleSwitch x:Name="DryRunToggle" OnContent="ドライラン" OffContent="実際に実行" IsChecked="True"
+                                      VerticalAlignment="Center" Checked="DryRunToggle_Changed" Unchecked="DryRunToggle_Changed"/>
+                    <Border x:Name="DryRunStatusBadge" Margin="10,0,0,0" Padding="8,3" CornerRadius="4"
+                            Background="#E6F4EA" VerticalAlignment="Center">
+                        <TextBlock x:Name="DryRunStatusText" Text="✓ 安全モード(実際には削除されません)"
+                                   FontSize="11" FontWeight="Bold" Foreground="#1E7B34"/>
+                    </Border>
+                    <ui:Button x:Name="UninstallButton" Content="選択したアプリをアンインストール"
+                               Appearance="Primary" Icon="{ui:SymbolIcon Delete24}"
+                               Margin="16,0,0,0" Click="UninstallButton_Click"/>
+                    <ui:Button x:Name="BatchUninstallButton" Content="選択した複数アプリを一括アンインストール (Pro)"
+                               Icon="{ui:SymbolIcon Apps24}" Margin="8,0,0,0" Click="BatchUninstallButton_Click"
+                               Visibility="Collapsed"/>
+                </StackPanel>
+
+            </StackPanel>
+        </ui:Card>
+
+        <ui:Card x:Name="LogCard" Grid.Row="6" Margin="14,0,14,10" Padding="14,10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0" Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="操作ログ" Style="{StaticResource SectionLabel}" VerticalAlignment="Center"/>
+                    <ui:Button Grid.Column="1" x:Name="CopyLogButton" Content="コピー" Icon="{ui:SymbolIcon Copy24}"
+                               FontSize="11" Padding="8,2" Click="CopyLogButton_Click"/>
+                </Grid>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <TextBox x:Name="LogText" FontFamily="Cascadia Mono, Consolas" FontSize="11" TextWrapping="NoWrap"
+                             IsReadOnly="True" BorderThickness="0" Background="Transparent" AcceptsReturn="True"
+                             VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Auto"/>
+                </ScrollViewer>
+            </Grid>
+        </ui:Card>
+    </Grid>
+</ui:FluentWindow>

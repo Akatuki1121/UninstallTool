@@ -1,0 +1,38 @@
+﻿<ui:FluentWindow x:Class="UninstallTool.UI.CrashReportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        mc:Ignorable="d"
+        Title="エラーが発生しました" Height="520" Width="700"
+        ExtendsContentIntoTitleBar="True" WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="エラーが発生しました"/>
+
+        <ui:InfoBar Grid.Row="1" Margin="14,10,14,8" IsOpen="True" IsClosable="False" Severity="Error"
+                    Title="ツールの動作中にエラーが発生しました"
+                    Message="下の内容には、直前にツールが何をしていたかの記録(操作ログ)とエラーの詳細が含まれています。「GitHubで報告」を押すと、この内容が入力された状態でGitHub Issue作成ページが開きます(GitHubアカウントでのログインが必要です)。"/>
+
+        <ui:Card Grid.Row="2" Margin="14,0,14,10" Padding="0">
+            <TextBox x:Name="ReportText" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
+                     FontFamily="Cascadia Mono, Consolas" FontSize="11" BorderThickness="0" Background="Transparent"
+                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
+        </ui:Card>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="14,0,14,14">
+            <ui:Button x:Name="ReportOnGitHubButton" Content="GitHubで報告" Icon="{ui:SymbolIcon Bug24}"
+                       Appearance="Primary" Click="ReportOnGitHubButton_Click"/>
+            <ui:Button x:Name="CopyButton" Content="コピー" Icon="{ui:SymbolIcon Copy24}"
+                       Margin="8,0,0,0" Click="CopyButton_Click"/>
+            <ui:Button x:Name="CloseButton" Content="閉じる" Margin="8,0,0,0" Click="CloseButton_Click"/>
+        </StackPanel>
+    </Grid>
+</ui:FluentWindow>
